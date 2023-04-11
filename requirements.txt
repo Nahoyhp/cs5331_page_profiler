@@ -1,0 +1,8 @@
+certifi==2022.12.7
+charset-normalizer==3.1.0
+idna==3.4
+pycrypto==2.6.1
+pygeohash==1.2.0
+python-geohash==0.8.5
+requests==2.28.2
+urllib3==1.26.15

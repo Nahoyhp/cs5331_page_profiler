@@ -1,0 +1,33 @@
+Problem 1: DiffChecker comparison doesn't guarantee difference at word level.
+	-> E.g. <p> Name: Hello </p> Vs <p> Name: <script> Hello World </script> </p>. The algorithm will highligh the whole <p> tag as the difference.
+	-> Solution 1: Trying to format the html.
+		-> By converting <tag> -> <tag>/n and </tag> -> \n<tag>
+		-> A lot harder because of inconsistent format
+			- E.g. tag can include letters and digits
+			- there can be words or even symbols before and after <tag> -> E.g. <p>Welcome!</p>
+			- Using regex, we need to sure that <p>Welcome!</p> becomes <p>\nWelcome!\n</p>
+	-> Computational Expensive
+
+Problem 2: Running JS code on the environment
+	-> Typically run in the browser or server respectively.
+		- Without <script> we can use js2py module to run it.
+	-> The snippet that we want to test on might includeHTML, Javascript or a combiniation of the two.
+		- E.g. <script>alert("XSS")</script>
+		- running ^ in JS will throw error.
+		
+
+Problem 3: Running PHP code in the environment
+	->  Typically run in the server respectively.
+		-> doesn't seem to have a module for it.
+		-> The "only" way I found is to use subprocess. Eval() seems to have possibility of XSS as well.
+			-> Do we need to care if we are doing in docker/other environment?
+			-> Rn, i think no need to care. 
+	-> Enclosed in <? ... ?> Therefore, we can just take whatever is in between.
+
+Problem 4: What if the inject cross multiple line.
+
+
+Problem X: Injected XSS is still ran on the server machine.
+	-> It's something that we want to avoid in the first replace.
+	-> Solution: Use of docker container and execute in the inject. Destroy docker afterwards.
+		-> For the host to know docker's status i.e. if the execution is successful or not, host still need access to the docker. this connection could be a place for vulnerability.

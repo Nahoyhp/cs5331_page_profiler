@@ -1,0 +1,15 @@
+<html>
+<head>
+<title>Thank you!</title>
+</head>
+
+<body>
+<p><img src ="/logo.png" alt="" width="243" height="102"></p>
+<h1> Thank you! </h1>
+<p id="msg"> Your registration to this event
+has been recorded as follows:</p>
+<p>Name:</p>
+<p>Email:</p>
+<p>Food preference: Swedish meatballs</p>
+</body>
+</html>
