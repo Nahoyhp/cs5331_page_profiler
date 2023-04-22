@@ -8,6 +8,12 @@ Problem 1: DiffChecker comparison doesn't guarantee difference at word level.
 			- Using regex, we need to sure that <p>Welcome!</p> becomes <p>\nWelcome!\n</p>
 	-> Computational Expensive
 
+- Can try to use Guesslang to resolve Problem 2 and 3.
+	- However, the Confidence level is very low due to short string.
+	- Similarity between difference languages.
+	- Javascript mixing with 
+
+
 Problem 2: Running JS code on the environment
 	-> Typically run in the browser or server respectively.
 		- Without <script> we can use js2py module to run it.
@@ -24,7 +30,14 @@ Problem 3: Running PHP code in the environment
 			-> Rn, i think no need to care. 
 	-> Enclosed in <? ... ?> Therefore, we can just take whatever is in between.
 
-Problem 4: What if the inject cross multiple line.
+[X] Problem 4: What if the inject cross multiple line.
+	-> Solved. By combining thoses inserted lines on different lines into one.
+
+Problem 5: How to distinguish between two types of error.
+	-> Lacks of local information. E.g. in php script, using local variables.
+	-> We need a way to distinguish between 
+		1) Error due to invalid synatx (i.e. not php scripts)
+		2) 
 
 
 Problem X: Injected XSS is still ran on the server machine.

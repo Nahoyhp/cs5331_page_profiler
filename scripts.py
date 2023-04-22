@@ -1,49 +1,38 @@
 import requests
-import json
-import subprocess
 from bs4 import BeautifulSoup
-import difflib
-import re
 
-response = {'rows': [{'end': False, 'left': {'chunks': [{'value': 'roses are ', 'type': 'equal'}, {'value': 'red', 'type': 'remove'}], 'line': 1}, 'right': {'chunks': [{'value': 'roses are ', 'type': 'equal'}, {'value': 'green', 'type': 'insert'}], 'line': 1}, 'insideChanged': True, 'start': True}, {'end': True, 'left': {'chunks': [{'value': '', 'type': 'remove'}, {'value': 'violets are ', 'type': 'equal'}, {'value': 'blue', 'type': 'remove'}], 'line': 2}, 'right': {'chunks': [{'value': '', 'type': 'insert'}, {'value': 'violets are ', 'type': 'equal'}, {'value': 'purple', 'type': 'insert'}], 'line': 2}, 'insideChanged': True}], 'added': 3, 'removed': 3}
 
-reference = """<html>
-<head>
-<title>Thank you!</title>
-</head>
-<body>
-<p><img src ="/logo.png" alt="" width="243" height="102"></p>
-<h1> Thank you! </h1>
-<p id="msg"> Your registration to this event has been recorded as follows:</p>
-<p>Name:</p>
-<p>Email:</p>
-<p>Food preference: Swedish meatballs</p>
-</body>
-</html>
+#Machine Learning Component
+from transformers import TextClassificationPipeline, RobertaTokenizer, RobertaConfig, RobertaModel, RobertaForSequenceClassification
+
+from pathlib import Path
+
+
+# import guesslang
+# guess = guesslang.Guess()
+
+"""
+def test_guesslang(string):
+  # guesslang.probabilities() return an list of tuples. (Langauge, Probabilities)
+  # Find another model
+  return list(filter(lambda x: x[0] in ['Php', 'JavaScript', 'HTML'], guess.probabilities(string)))
 """
 
-inject = """
-<html>
-<head>
-<title>Thank you!</title>
-</head>
-<body>
-<p><img src ="/logo.png" alt="" width="243" height="102"></p>
-<h1> Thank you! </h1>
-<p id="msg"> Your registration to this event has been recorded as follows:</p>
-<p>Name:\n<script>\nalert('XSS')\n</script>\n</p>
-<p>Email:</p>
-<p>Food preference: Swedish meatballs</p>
-</body>
-</html>
-"""
 
+"""
 def format_start(html_string):
   return re.sub(r".*<[. ]+>", lambda x: x.group(0) + "\n", html_string)
 
 def format_end(html_string):
   return re.sub(r".*[a-z ]*</[a-z]*>", lambda x: "\n" + x.group(0) + "\n", html_string)
+"""
 
+CODEBERTA_LANGUAGE_ID = "huggingface/CodeBERTa-language-id"
+
+CODEBERTA_PIPELINE = TextClassificationPipeline(
+    model=RobertaForSequenceClassification.from_pretrained(CODEBERTA_LANGUAGE_ID),
+    tokenizer=RobertaTokenizer.from_pretrained(CODEBERTA_LANGUAGE_ID)
+)
 
 def find_difference(left, right):
   email = "xiaophyolin@gmail.com"
@@ -75,50 +64,58 @@ def difference_right(json_item):
       if comparison_dic['type'] == "insert":
         consecutive_inject += comparison_dic['value']
         continue
-
-      inserted.append(consecutive_inject)
-      consecutive_inject = ""
-      continue
-
+      
+      if consecutive_inject != "":
+        inserted.append(consecutive_inject)
+        consecutive_inject = ""
+        
   if consecutive_inject != "":
     inserted.append(consecutive_inject)
 
   return inserted
 
-def run_php(command_line):
-  #Try to run the line as php. Run True if possible.
-  #Ideally in a docker.
-  return False
-
-def run_js(inject_line):
-  #Try to run the line as php. Run True if possible.
-  #Ideally in a docker.
-  return True
-
-
-
 def test_inserts_runnable(inserted_lines):
-  flag = False
   for line in inserted_lines:
     # Will help to insert missing tags
     line_soup = BeautifulSoup(line, 'html.parser')
-    for d in line_soup.descendants():
-      print(d)
-      # Try to run each descandants to see if they are runnable.
-      # If so, return true.
+
+    #If line = "<p> <b1> X </b1> <h2> <h3> Y </h3> </h2> </p>"
+    #descandants will be "<b1> X </b1>", "<h2> <h3> Y </h3> </h2>", "<h3> Y </h3>""
+    for d in line_soup.descendants:
+      if isCode(str(d)):
+        return True
+    
+  return False
+
+def isCode(testString):
+  berta_result = CODEBERTA_PIPELINE(testString)[0]
+  label, score = berta_result['label'], berta_result['score']
+  if label in ['javascript', 'php'] and score > 0.85:
+    print(testString, label, score)
+    return True
+  
+  return False
 
 def test():
   result_json = find_difference(reference, inject)
   result = difference_right(result_json)
-  return (result_json, result)
+  return test_inserts_runnable(result)
 
 if __name__ == "__main__":
-  # Step 1: Format the reference and Inject HTML
-    # format_start(), format_end()
+  #Query the diffChecker API to find the difference between left (base) and right (web page of interest)
+  referencePath = "./Base.txt"
+  testPath = "./Test.txt"
 
-  # Step 2: Find the difference between Reference and Inject
-    # find_difference() -> Query diff checker api
-    # find_right() -> Find the inserts in the Inject. If possible, try to connect the consective inserts.
-    
-  # Step 3: Try to run each of the difference to see if they are runnable
-    # test_inserts_runnable()
+  reference = Path(referencePath).read_text()
+  inject = Path(testPath).read_text()
+
+  difference_json = find_difference(reference, inject)
+
+  #Find the inserts on the right page
+  differences = difference_right(difference_json)
+
+  #Test each one of the lines to see if they are runnable
+  if test_inserts_runnable(differences):
+    print("Contain Scripts")
+  else:
+    print("Good to Go")
