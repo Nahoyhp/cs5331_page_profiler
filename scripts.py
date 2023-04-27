@@ -38,7 +38,7 @@ def isCode(testString):
   berta_result = CODEBERTA_PIPELINE(testString.strip())[0]
   label, score = berta_result['label'], berta_result['score']
   if label in ['javascript', 'php'] and score > 0.85:
-    print(testString, label, score)
+    # print(testString, label, score)
     return True
   return False
 
@@ -102,16 +102,6 @@ def compare_pages(ref_page, req_page):
 if __name__ == "__main__":
   #Query the diffChecker API to find the difference between left (base) and right (web page of interest)
   reference, requested = open_files("./reference.txt", "./request.txt")
-  compare_pages(reference, requested)
-
-  if test_inserts_runnable(line_num_to_line_dict.values()):
-    print("2")
-  else:
-    print("1")
-
-  print("Testing Injected")
-
-  reference, requested = open_files("./reference.txt", "./request_injected.txt")
   compare_pages(reference, requested)
 
   if test_inserts_runnable(line_num_to_line_dict.values()):

@@ -94,7 +94,7 @@ def test_inserts_runnable(inserted_lines):
 def isCode(testString):
   berta_result = CODEBERTA_PIPELINE(testString)[0]
   label, score = berta_result['label'], berta_result['score']
-  if label in ['javascript', 'php'] and score > 0.85:
+  if label in ['javascript', 'php'] and score > 0.90:
     print(testString, label, score)
     return True
   
