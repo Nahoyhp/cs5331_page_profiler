@@ -1,31 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 
 #Machine Learning Component
 from transformers import TextClassificationPipeline, RobertaTokenizer, RobertaConfig, RobertaModel, RobertaForSequenceClassification
 
 from pathlib import Path
-
-
-# import guesslang
-# guess = guesslang.Guess()
-
-"""
-def test_guesslang(string):
-  # guesslang.probabilities() return an list of tuples. (Langauge, Probabilities)
-  # Find another model
-  return list(filter(lambda x: x[0] in ['Php', 'JavaScript', 'HTML'], guess.probabilities(string)))
-"""
-
-
-"""
-def format_start(html_string):
-  return re.sub(r".*<[. ]+>", lambda x: x.group(0) + "\n", html_string)
-
-def format_end(html_string):
-  return re.sub(r".*[a-z ]*</[a-z]*>", lambda x: "\n" + x.group(0) + "\n", html_string)
-"""
 
 CODEBERTA_LANGUAGE_ID = "huggingface/CodeBERTa-language-id"
 
@@ -33,46 +15,6 @@ CODEBERTA_PIPELINE = TextClassificationPipeline(
     model=RobertaForSequenceClassification.from_pretrained(CODEBERTA_LANGUAGE_ID),
     tokenizer=RobertaTokenizer.from_pretrained(CODEBERTA_LANGUAGE_ID)
 )
-
-def find_difference(left, right):
-  email = "xiaophyolin@gmail.com"
-
-  url = 'https://api.diffchecker.com/public/text?output_type=json&email=' + email 
-  myobj = {
-  "output_type" : "json",
-  "left" : left,
-  "right": right,
-  "diff_level": "word"
-  }
-
-  return requests.post(url, json = myobj).json()
-
-def difference_right(json_item):
-  if json_item['added'] == 0 and json_item['removed'] == 0:
-    return 0
-
-  inserted = []
-  # each line_dic represents the difference in one line
-  
-  consecutive_inject = ""
-  for line_dic in json_item['rows']:
-    if line_dic['insideChanged'] == False:
-      continue
-
-    for index, comparison_dic in enumerate(line_dic['right']['chunks']):
-      #type can be "equal", "remove", "insert"
-      if comparison_dic['type'] == "insert":
-        consecutive_inject += comparison_dic['value']
-        continue
-      
-      if consecutive_inject != "":
-        inserted.append(consecutive_inject)
-        consecutive_inject = ""
-        
-  if consecutive_inject != "":
-    inserted.append(consecutive_inject)
-
-  return inserted
 
 def test_inserts_runnable(inserted_lines):
   for line in inserted_lines:
@@ -82,40 +24,99 @@ def test_inserts_runnable(inserted_lines):
     #If line = "<p> <b1> X </b1> <h2> <h3> Y </h3> </h2> </p>"
     #descandants will be "<b1> X </b1>", "<h2> <h3> Y </h3> </h2>", "<h3> Y </h3>""
     for d in line_soup.descendants:
-      if isCode(str(d)):
+      str_d = str(d)
+      # Seems like ML model can't accept string length greater than that
+      if len(str_d) > 514:
+        continue
+
+      if len(str_d) >= 10 and isCode(str(d)):
         return True
     
   return False
 
 def isCode(testString):
-  berta_result = CODEBERTA_PIPELINE(testString)[0]
+  berta_result = CODEBERTA_PIPELINE(testString.strip())[0]
   label, score = berta_result['label'], berta_result['score']
   if label in ['javascript', 'php'] and score > 0.85:
     print(testString, label, score)
     return True
-  
   return False
 
-def test():
-  result_json = find_difference(reference, inject)
-  result = difference_right(result_json)
-  return test_inserts_runnable(result)
+
+def open_files(filepath_1, filepath_2):
+  try:
+    with open(filepath_1, "r") as file1, open(filepath_2, "r") as file2:
+      # Process the contents of the files here
+      file1_contents = file1.read()
+      file2_contents = file2.read()
+      return file1_contents, file2_contents
+  
+  except:
+    print("Something went wrong when opening reference.txt and/or requested.txt")
+
+
+line_num_to_line_dict = {}
+
+# removes the outermost common chars of string1
+def remove_common_chars(string1, string2):
+    ptr1_left = 0
+    ptr2_left = 0
+
+    while ptr1_left < len(string1) and ptr2_left < len(string2):
+        if string1[ptr1_left] == string2[ptr2_left]:
+            ptr1_left += 1
+            ptr2_left += 1
+        else:
+            break
+
+    string2 = string2[ptr2_left:len(string2)]
+
+    ptr1_right = len(string1) - 1
+    ptr2_right = len(string2) - 1
+
+    while ptr1_right >= 0 and ptr2_right >= 0:
+        if string1[ptr1_right] == string2[ptr2_right]:
+            ptr1_right -= 1
+            ptr2_right -= 1
+        else:
+            break
+
+    return string2[0:ptr2_right + 1]
+
+def compare_pages(ref_page, req_page):
+    line_num_to_line_dict.clear()
+    ref_lines = ref_page.split("\n")
+    req_lines = req_page.split("\n")
+    num_lines = min(len(ref_lines), len(req_lines))
+
+    # lines that are not the same
+    for i in range(num_lines):
+        if ref_lines[i] != req_lines[i]:
+            line_num_to_line_dict[i] = remove_common_chars(ref_lines[i], req_lines[i])
+
+    # additional lines from requested.txt page are added
+    if len(req_lines) > len(ref_lines):
+        for i in range(num_lines, len(req_lines)):
+            line_num_to_line_dict[i] = req_lines[i]
 
 if __name__ == "__main__":
   #Query the diffChecker API to find the difference between left (base) and right (web page of interest)
-  referencePath = "./Base.txt"
-  testPath = "./Test.txt"
+  reference, requested = open_files("./reference.txt", "./request.txt")
+  compare_pages(reference, requested)
 
-  reference = Path(referencePath).read_text()
-  inject = Path(testPath).read_text()
-
-  difference_json = find_difference(reference, inject)
-
-  #Find the inserts on the right page
-  differences = difference_right(difference_json)
-
-  #Test each one of the lines to see if they are runnable
-  if test_inserts_runnable(differences):
-    print("Contain Scripts")
+  if test_inserts_runnable(line_num_to_line_dict.values()):
+    print("2")
   else:
-    print("Good to Go")
+    print("1")
+
+  print("Testing Injected")
+
+  reference, requested = open_files("./reference.txt", "./request_injected.txt")
+  compare_pages(reference, requested)
+
+  if test_inserts_runnable(line_num_to_line_dict.values()):
+    print("2")
+  else:
+    print("1")
+     
+

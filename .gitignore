@@ -1,0 +1,4 @@
+
+*.Identifier
+cve_2022_21622_inject.txt
+cve_2022_21622_normal.txt
